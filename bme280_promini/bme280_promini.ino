@@ -1,7 +1,5 @@
 /*
-
-  Processos - Atmega328p 5v, 16MHz
-
+  Processor - Atmega328p 5v, 16MHz
 */
 
 #include "RF24.h"
@@ -16,19 +14,22 @@
 
 #include <stdio.h> // for function sprintf
 
-
 typedef struct
 {
   int16_t temp;       // 10
   uint16_t humid;     // 7
   float pressure;
   uint16_t voltage;   // 10
+  uint8_t counter;
 } __attribute__((__packed__)) ClimatReading;
 
-Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK);
+Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS> bme;
+
 RF24 myRadio (9, 10);
 byte addresses[][6] = {"1Node", "2Node"};
 ClimatReading data;
+
+uint8_t _packetCounter;
 
 void setup() {
   setClockPrescaler(CLOCK_PRESCALER_32);
@@ -131,6 +132,7 @@ void printValues() {
   while (ADCSRA & (1 << ADSC));
   uint16_t res = ADC;
   data.voltage = 108000 / res;
+  data.counter = _packetCounter++;
 
   myRadio.write( &data, sizeof(data) );
   myRadio.startListening();

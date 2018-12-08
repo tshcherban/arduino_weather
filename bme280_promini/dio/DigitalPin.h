@@ -317,6 +317,12 @@ class DigitalPin {
   inline operator bool () const __attribute__((always_inline)) {
     return read();
   }
+
+  inline __attribute__((always_inline))
+  void config(uint8_t mode) {
+    fastPinMode(PinNumber, mode);
+  }
+
   //----------------------------------------------------------------------------
   /** Set pin configuration.
    * @param[in] mode: INPUT or OUTPUT.
