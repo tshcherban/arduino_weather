@@ -19,6 +19,7 @@ typedef struct
   uint16_t humid;
   float pressure;
   uint16_t voltage;
+  uint8_t counter;
 } __attribute__((__packed__)) ClimatReading;
 
 ClimatReading data;
@@ -104,6 +105,8 @@ void ConnectToWiFi()
   Serial.println(WiFi.localIP());
 }
 
+uint8_t _prevCounter;
+
 void loop()
 {
   last_loop = millis();
@@ -134,6 +137,18 @@ void loop()
     counter++;
     Serial.print(counter);
 
+    auto dif = data.counter - _prevCounter;
+    if (dif > 1)
+    {
+      Serial.print(" (");
+      Serial.print("lost ");
+      Serial.print(dif);
+      Serial.print(" packets");
+      Serial.print(")");
+    }
+
+    _prevCounter = data.counter;
+    
     ESP.wdtFeed();
 
     sprintf(str, "/api/data/?value=t:%i;h:%u;p:%f;u:%u", data.temp, data.humid, data.pressure, data.voltage);
