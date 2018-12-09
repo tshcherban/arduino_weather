@@ -7,6 +7,9 @@
 #include "lowpower.h"
 #include "Prescaler.h"
 
+#include "Adafruit_GFX.h"
+#include "Adafruit_PCD8544.h"
+
 #define BME_SCK 11//2 /*SCL*/
 #define BME_MISO 3 /*SDO*/
 #define BME_MOSI 4 /*SDA/SDI*/
@@ -24,6 +27,7 @@ typedef struct
 } __attribute__((__packed__)) ClimatReading;
 
 Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS> bme;
+Adafruit_PCD8544 _display(7, 6, 5, 4, 3);
 
 RF24 myRadio (9, 10);
 byte addresses[][6] = {"1Node", "2Node"};
@@ -65,6 +69,10 @@ void setup() {
 byte interval = 3;
 
 void loop() {
+
+  _display.begin();
+  _display.setContrast(50);
+  
   auto state = digitalRead(BME_MOSI);
   digitalWrite(BME_MOSI, HIGH);
 
@@ -106,9 +114,6 @@ void printValues() {
   Serial.print(F("reading..."));
   auto ms1 = micros();
   auto datata = bme.readAll();
-  //data.temp = bme.readTemperatureInt16();
-  //data.humid = bme.readHumidityUint16Unsafe();
-  //data.pressure = bme.readPressureUnsafe();
   data.temp = datata.temp;
   data.humid = datata.humid;
   data.pressure = datata.pressure;

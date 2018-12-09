@@ -147,4 +147,3 @@
 
 
 #endif // __RF24_CONFIG_H__
-
