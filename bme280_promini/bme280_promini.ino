@@ -3,7 +3,9 @@
 */
 
 #include "RF24.h"
-#include "BME280.h"
+
+#include "bme\Adafruit_BME280.h"
+
 #include "lowpower.h"
 #include "Prescaler.h"
 
@@ -26,8 +28,8 @@ typedef struct
   uint8_t counter;
 } __attribute__((__packed__)) ClimatReading;
 
-Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS> bme;
-Adafruit_PCD8544 _display(7, 6, 5, 4, 3);
+Adafruit_BME280 bme(BME_CS);
+//Adafruit_PCD8544 _display(7, 6, 5, 4, 3);
 
 RF24 myRadio (9, 10);
 byte addresses[][6] = {"1Node", "2Node"};
@@ -40,7 +42,7 @@ void setup() {
   Serial.begin(1200 * getClockDivisionFactor());
   Serial.println(F("boot"));
   Serial.flush();
-  auto status = bme.begin(0x76);
+  auto status = bme.begin();
   if (!status) {
     trueDelay(10);
     Serial.println(F("sensor error"));
@@ -70,8 +72,8 @@ byte interval = 3;
 
 void loop() {
 
-  _display.begin();
-  _display.setContrast(50);
+  //_display.begin();
+  //_display.setContrast(50);
   
   auto state = digitalRead(BME_MOSI);
   digitalWrite(BME_MOSI, HIGH);
@@ -111,12 +113,13 @@ void setInterval(byte cmd);
 
 void printValues() {
 
+  TCNT0 = 0;
   Serial.print(F("reading..."));
   auto ms1 = micros();
-  auto datata = bme.readAll();
-  data.temp = datata.temp;
+  //auto datata = bme.readAll();
+  /*data.temp = datata.temp;
   data.humid = datata.humid;
-  data.pressure = datata.pressure;
+  data.pressure = datata.pressure;*/
 
   auto ms2 = micros();
   auto dif = ms2 - ms1;
