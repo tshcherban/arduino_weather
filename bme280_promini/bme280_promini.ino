@@ -64,6 +64,13 @@ void setup() {
   ADCSRA = (1 << ADEN) | (1 << ADPS1);
   ADCSRA |= (1 << ADSC);
   while (ADCSRA & (1 << ADSC));
+
+  _bme.setSampling(Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS>::sensor_mode::MODE_NORMAL,
+                  /*tempSampling  */   Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS>::sensor_sampling::SAMPLING_X16,
+                  /*pressSampling */   Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS>::sensor_sampling::SAMPLING_X16,
+                  /*humSampling   */   Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS>::sensor_sampling::SAMPLING_X16,
+                  /*filter        */   Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS>::sensor_filter::FILTER_X4,
+                  /*standby_duration*/ Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS>::standby_duration::STANDBY_MS_125);
 }
 
 byte _intervalSelector = 3;
@@ -121,16 +128,16 @@ void printValues() {
   auto ms2 = micros();
   auto dif = ms2 - ms1;
   Serial.print(" done in ");
-  Serial.print(dif);  
+  Serial.print(dif);
   Serial.println(" us");
-  
+
   Serial.print("t ");
   Serial.print(_data.temp);
   Serial.print("; h ");
   Serial.print(_data.humid);
   Serial.print("; p ");
   Serial.println(_data.pressure);
-  
+
   Serial.flush();
 
   ADCSRA |= (1 << ADSC);
