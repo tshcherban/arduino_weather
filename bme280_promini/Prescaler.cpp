@@ -50,4 +50,3 @@ unsigned long rescaleDuration(unsigned long d) {
 unsigned long rescaleTime(unsigned long t) {
   return (t * getClockDivisionFactor());
 }
-

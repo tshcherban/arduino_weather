@@ -1969,4 +1969,3 @@ void GFXcanvas16::fillScreen(uint16_t color) {
         }
     }
 }
-

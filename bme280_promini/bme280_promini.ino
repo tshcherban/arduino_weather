@@ -2,6 +2,8 @@
   Processor - Atmega328p 5v, 16MHz
 */
 
+#pragma region includes/defines
+
 #include "RF24.h"
 #include "BME280.h"
 #include "lowpower.h"
@@ -10,12 +12,18 @@
 #include "Adafruit_GFX.h"
 #include "Adafruit_PCD8544.h"
 
+#include <stdio.h> // for function sprintf
+
 #define BME_SCK 11//2 /*SCL*/
 #define BME_MISO 3 /*SDO*/
 #define BME_MOSI 4 /*SDA/SDI*/
 #define BME_CS 5 /*CSB??*/
 
-#include <stdio.h> // for function sprintf
+#define RF_CE 9
+#define RF_CS 10
+
+#pragma endregion
+
 
 typedef struct
 {
@@ -26,18 +34,37 @@ typedef struct
   uint8_t counter;
 } __attribute__((__packed__)) ClimatReading;
 
-Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS> _bme;
+
+const uint32_t _internalRef = 108000000;
+
+Adafruit_BME280_T<BME_MISO, BME_MOSI, BME_SCK, BME_CS> _bme;
+RF24 _radio (RF_CE, RF_CS);
 //Adafruit_PCD8544 _display(7, 6, 5, 4, 3);
-
-RF24 _radio (9, 10);
 byte _addresses[][6] = {"1Node", "2Node"};
-ClimatReading _data;
-
+ClimatReading _dataToSend;
+BME280_Data _readData;
+byte _command[sizeof(_dataToSend)];
 uint8_t _packetCounter;
+byte _intervalSelector = 3;
+
+
+inline __attribute__((always_inline))
+void waitAdc()
+{
+  while (ADCSRA & (1 << ADSC));
+}
+
+inline __attribute__((always_inline))
+void startAdc() {
+  ADCSRA |= (1 << ADSC);
+}
+
+void printValues();
 
 void setup() {
   setClockPrescaler(CLOCK_PRESCALER_32);
-  Serial.begin(1200 * getClockDivisionFactor());
+  uint16_t divFactor = 32;
+  Serial.begin(1200 * divFactor);
   Serial.println(F("boot"));
   Serial.flush();
   auto status = _bme.begin(0x76);
@@ -48,38 +75,35 @@ void setup() {
   }
 
   Serial.println(F("boot ok, sensor init done"));
+  Serial.print(F("ckdiv "));
+  Serial.println(divFactor);
   Serial.flush();
 
   //Serial.end();
 
-  _radio.begin();  // Start up the physical nRF24L01 Radio
-  _radio.setChannel(108);  // Above most Wifi Channels
-  _radio.setPALevel(RF24_PA_HIGH);
-  _radio.setPayloadSize(sizeof(_data));
-  _radio.openWritingPipe( _addresses[0]);
-  _radio.openReadingPipe(1, _addresses[1]);
+  // _radio.begin();  // Start up the physical nRF24L01 Radio
+  // _radio.setChannel(108);  // Above most Wifi Channels
+  // _radio.setPALevel(RF24_PA_HIGH);
+  // _radio.setPayloadSize(sizeof(_dataToSend));
+  // _radio.openWritingPipe( _addresses[0]);
+  // _radio.openReadingPipe(1, _addresses[1]);
 
   ADMUX = (1 << REFS0) | (1 << MUX3) | (1 << MUX2) | (1 << MUX1);
   //ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
   ADCSRA = (1 << ADEN) | (1 << ADPS1);
-  ADCSRA |= (1 << ADSC);
-  while (ADCSRA & (1 << ADSC));
+  startAdc();
 
-  _bme.setSampling(Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS>::sensor_mode::MODE_NORMAL,
-                  /*tempSampling  */   Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS>::sensor_sampling::SAMPLING_X16,
-                  /*pressSampling */   Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS>::sensor_sampling::SAMPLING_X16,
-                  /*humSampling   */   Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS>::sensor_sampling::SAMPLING_X16,
-                  /*filter        */   Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS>::sensor_filter::FILTER_X4,
-                  /*standby_duration*/ Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS>::standby_duration::STANDBY_MS_125);
+  _bme.setSampling(Adafruit_BME280::sensor_mode::MODE_NORMAL,
+                  /*tempSampling  */   Adafruit_BME280::sensor_sampling::SAMPLING_X16,
+                  /*pressSampling */   Adafruit_BME280::sensor_sampling::SAMPLING_X16,
+                  /*humSampling   */   Adafruit_BME280::sensor_sampling::SAMPLING_X16,
+                  /*filter        */   Adafruit_BME280::sensor_filter::FILTER_X4,
+                  /*standby_duration*/ Adafruit_BME280::standby_duration::STANDBY_MS_250);
+
+  waitAdc();
 }
 
-byte _intervalSelector = 3;
-
 void loop() {
-
-  //_display.begin();
-  //_display.setContrast(50);
-  
   auto state = digitalRead(BME_MOSI);
   digitalWrite(BME_MOSI, HIGH);
 
@@ -107,60 +131,62 @@ void loop() {
       break;
   }
 
-
   digitalWrite(BME_MOSI, state);
+
   printValues();
 }
 
-byte command[sizeof(_data)];
-
-void setInterval(byte cmd);
-
 void printValues() {
+  startAdc();
 
-  Serial.print(F("reading..."));
-  auto ms1 = micros();
-  auto datata = _bme.readAll();
-  _data.temp = datata.temp;
-  _data.humid = datata.humid;
-  _data.pressure = datata.pressure;
+  auto ms1 = micros() * 32;
+  _readData = _bme.readAll();
+  _dataToSend.temp = _readData.temp;
+  _dataToSend.humid = _readData.humid;
+  _dataToSend.pressure = _readData.pressure;
 
-  auto ms2 = micros();
+  waitAdc();
+  startAdc();
+  waitAdc();
+  uint32_t res = ADC;
+  startAdc();
+  waitAdc();
+  res += ADC;
+  startAdc();
+  waitAdc();
+  res += ADC;
+  startAdc();
+  waitAdc();
+  res += ADC;
+  _dataToSend.voltage = _internalRef / (res / 4);
+  _dataToSend.counter = _packetCounter++;
+
+  auto ms2 = micros() * 32;
   auto dif = ms2 - ms1;
   Serial.print(" done in ");
   Serial.print(dif);
   Serial.println(" us");
 
   Serial.print("t ");
-  Serial.print(_data.temp);
+  Serial.print(_dataToSend.temp);
   Serial.print("; h ");
-  Serial.print(_data.humid);
+  Serial.print(_dataToSend.humid);
   Serial.print("; p ");
-  Serial.println(_data.pressure);
-
+  Serial.print(_dataToSend.pressure);
+  Serial.print("; v ");
+  Serial.println(_dataToSend.voltage);
   Serial.flush();
 
-  ADCSRA |= (1 << ADSC);
-  while (ADCSRA & (1 << ADSC));
-  uint16_t res = ADC;
-  _data.voltage = 108000 / res;
-  _data.counter = _packetCounter++;
-
-  _radio.write( &_data, sizeof(_data) );
-  _radio.startListening();
-  LowPower.powerDown(SLEEP_15MS, ADC_OFF, BOD_OFF);
-  if (_radio.available())
-  {
-    _radio.read(&command, sizeof(_data));
-    byte cmd = command[0];
-    setInterval(cmd);
-  }
-  _radio.stopListening();
-
-  Serial.print("voltage ");
-  Serial.print(1080000 / res);
-  Serial.println(" mV");
-  Serial.flush();
+  // _radio.write( &_dataToSend, sizeof(_dataToSend) );
+  // _radio.startListening();
+  // LowPower.powerDown(SLEEP_15MS, ADC_OFF, BOD_OFF);
+  // if (_radio.available())
+  // {
+  //   _radio.read(&_command, sizeof(_dataToSend));
+  //   byte cmd = _command[0];
+  //   setInterval(cmd);
+  // }
+  // _radio.stopListening();
 }
 
 void setInterval(byte cmd)

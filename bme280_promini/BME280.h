@@ -123,19 +123,18 @@ typedef struct
   float pressure;
 } __attribute__((__packed__)) BME280_Data;
 
-template<uint8_t MisoPin, uint8_t MosiPin, uint8_t SckPin, uint8_t CsPin>
 class Adafruit_BME280 {
   public:
     enum sensor_sampling {
-      SAMPLING_NONE = 0b000,
-      SAMPLING_X1   = 0b001,
-      SAMPLING_X2   = 0b010,
-      SAMPLING_X4   = 0b011,
-      SAMPLING_X8   = 0b100,
-      SAMPLING_X16  = 0b101
-    };
+        SAMPLING_NONE = 0b000,
+        SAMPLING_X1   = 0b001,
+        SAMPLING_X2   = 0b010,
+        SAMPLING_X4   = 0b011,
+        SAMPLING_X8   = 0b100,
+        SAMPLING_X16  = 0b101
+      };
 
-    enum sensor_mode {
+      enum sensor_mode {
       MODE_SLEEP  = 0b00,
       MODE_FORCED = 0b01,
       MODE_NORMAL = 0b11
@@ -160,9 +159,12 @@ class Adafruit_BME280 {
       STANDBY_MS_500  = 0b100,
       STANDBY_MS_1000 = 0b101
     };
+};
 
-    // constructors
-    Adafruit_BME280() {};
+template<uint8_t MisoPin, uint8_t MosiPin, uint8_t SckPin, uint8_t CsPin>
+class Adafruit_BME280_T : Adafruit_BME280{
+  public:
+    Adafruit_BME280_T() {};
 
     bool begin(void)
     {
