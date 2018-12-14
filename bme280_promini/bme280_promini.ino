@@ -4,7 +4,7 @@
 
 #include "RF24.h"
 
-#include "bme\Adafruit_BME280.h"
+#include "Adafruit_BME280.h"
 
 #include "lowpower.h"
 #include "Prescaler.h"
@@ -61,11 +61,24 @@ void setup() {
   myRadio.openWritingPipe( addresses[0]);
   myRadio.openReadingPipe(1, addresses[1]);
 
+  myRadio.powerDown();
+
   ADMUX = (1 << REFS0) | (1 << MUX3) | (1 << MUX2) | (1 << MUX1);
   //ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
   ADCSRA = (1 << ADEN) | (1 << ADPS1);
   ADCSRA |= (1 << ADSC);
   while (ADCSRA & (1 << ADSC));
+
+  SPI.beginTransaction(SPISettings(16000000, MSBFIRST, SPI_MODE0));
+  SPI.endTransaction();
+  //SPI.setClockDivider(2);
+
+    bme.setSampling(Adafruit_BME280::sensor_mode::MODE_NORMAL,
+                  /*tempSampling  */   Adafruit_BME280::sensor_sampling::SAMPLING_X16,
+                  /*pressSampling */   Adafruit_BME280::sensor_sampling::SAMPLING_X16,
+                  /*humSampling   */   Adafruit_BME280::sensor_sampling::SAMPLING_X16,
+                  /*filter        */   Adafruit_BME280::sensor_filter::FILTER_X4,
+                  /*standby_duration*/ Adafruit_BME280::standby_duration::STANDBY_MS_125);
 }
 
 byte interval = 3;
@@ -114,12 +127,12 @@ void setInterval(byte cmd);
 void printValues() {
 
   TCNT0 = 0;
+
   Serial.print(F("reading..."));
   auto ms1 = micros();
-  //auto datata = bme.readAll();
-  /*data.temp = datata.temp;
-  data.humid = datata.humid;
-  data.pressure = datata.pressure;*/
+  data.temp = bme.readTemperature();
+  data.humid = bme.readHumidity();
+  data.pressure = bme.readPressure();
 
   auto ms2 = micros();
   auto dif = ms2 - ms1;
@@ -142,7 +155,7 @@ void printValues() {
   data.voltage = 108000 / res;
   data.counter = _packetCounter++;
 
-  myRadio.write( &data, sizeof(data) );
+  /* myRadio.write( &data, sizeof(data) );
   myRadio.startListening();
   LowPower.powerDown(SLEEP_15MS, ADC_OFF, BOD_OFF);
   if (myRadio.available())
@@ -151,7 +164,7 @@ void printValues() {
     byte cmd = command[0];
     setInterval(cmd);
   }
-  myRadio.stopListening();
+  myRadio.stopListening(); */
 
   Serial.print("voltage ");
   Serial.print(1080000 / res);

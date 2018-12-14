@@ -1402,7 +1402,7 @@ private:
  * @li <a href="Python.html"><b>Python</b></a> wrapper available for Linux devices
  *
  * <br>
- * **General µC Pin layout** (See the individual board support pages for more info)
+ * **General Р вЂ™Р’ВµC Pin layout** (See the individual board support pages for more info)
  *
  * The table below shows how to connect the the pins of the NRF24L01(+) to different boards.
  * CE and CSN are configurable.

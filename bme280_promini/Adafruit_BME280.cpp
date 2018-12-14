@@ -249,14 +249,14 @@ void Adafruit_BME280::write8(byte reg, byte value) {
         _wire -> write((uint8_t)value);
         _wire -> endTransmission();
     } else {
-        if (_sck == -1)
-            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+        //if (_sck == -1)
+            //SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
         digitalWrite(_cs, LOW);
         spixfer(reg & ~0x80); // write, bit 7 low
         spixfer(value);
         digitalWrite(_cs, HIGH);
-    if (_sck == -1)
-        SPI.endTransaction(); // release the SPI bus
+    //if (_sck == -1)
+        //SPI.endTransaction(); // release the SPI bus
     }
 }
 
@@ -278,14 +278,14 @@ uint8_t Adafruit_BME280::read8(byte reg) {
         _wire -> requestFrom((uint8_t)_i2caddr, (byte)1);
         value = _wire -> read();
     } else {
-        if (_sck == -1)
-            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+        //if (_sck == -1)
+            //SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
         digitalWrite(_cs, LOW);
         spixfer(reg | 0x80); // read, bit 7 high
         value = spixfer(0);
         digitalWrite(_cs, HIGH);
-        if (_sck == -1)
-            SPI.endTransaction(); // release the SPI bus
+        //if (_sck == -1)
+            //SPI.endTransaction(); // release the SPI bus
     }
     return value;
 }
@@ -309,14 +309,14 @@ uint16_t Adafruit_BME280::read16(byte reg)
         _wire -> requestFrom((uint8_t)_i2caddr, (byte)2);
         value = (_wire -> read() << 8) | _wire -> read();
     } else {
-        if (_sck == -1)
-            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+        //if (_sck == -1)
+            //SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
         digitalWrite(_cs, LOW);
         spixfer(reg | 0x80); // read, bit 7 high
         value = (spixfer(0) << 8) | spixfer(0);
         digitalWrite(_cs, HIGH);
-        if (_sck == -1)
-            SPI.endTransaction(); // release the SPI bus
+        //if (_sck == -1)
+            //SPI.endTransaction(); // release the SPI bus
     }
 
     return value;
@@ -385,8 +385,8 @@ uint32_t Adafruit_BME280::read24(byte reg)
         value <<= 8;
         value |= _wire -> read();
     } else {
-        if (_sck == -1)
-            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+//        if (_sck == -1)
+            //SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
         digitalWrite(_cs, LOW);
         spixfer(reg | 0x80); // read, bit 7 high
 
@@ -397,8 +397,8 @@ uint32_t Adafruit_BME280::read24(byte reg)
         value |= spixfer(0);
 
         digitalWrite(_cs, HIGH);
-        if (_sck == -1)
-            SPI.endTransaction(); // release the SPI bus
+        //if (_sck == -1)
+            //SPI.endTransaction(); // release the SPI bus
     }
 
     return value;
