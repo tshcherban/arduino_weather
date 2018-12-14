@@ -26,12 +26,12 @@ typedef struct
   uint8_t counter;
 } __attribute__((__packed__)) ClimatReading;
 
-Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS> bme;
-Adafruit_PCD8544 _display(7, 6, 5, 4, 3);
+Adafruit_BME280<BME_MISO, BME_MOSI, BME_SCK, BME_CS> _bme;
+//Adafruit_PCD8544 _display(7, 6, 5, 4, 3);
 
-RF24 myRadio (9, 10);
-byte addresses[][6] = {"1Node", "2Node"};
-ClimatReading data;
+RF24 _radio (9, 10);
+byte _addresses[][6] = {"1Node", "2Node"};
+ClimatReading _data;
 
 uint8_t _packetCounter;
 
@@ -40,7 +40,7 @@ void setup() {
   Serial.begin(1200 * getClockDivisionFactor());
   Serial.println(F("boot"));
   Serial.flush();
-  auto status = bme.begin(0x76);
+  auto status = _bme.begin(0x76);
   if (!status) {
     trueDelay(10);
     Serial.println(F("sensor error"));
@@ -52,12 +52,12 @@ void setup() {
 
   //Serial.end();
 
-  myRadio.begin();  // Start up the physical nRF24L01 Radio
-  myRadio.setChannel(108);  // Above most Wifi Channels
-  myRadio.setPALevel(RF24_PA_HIGH);
-  myRadio.setPayloadSize(sizeof(data));
-  myRadio.openWritingPipe( addresses[0]);
-  myRadio.openReadingPipe(1, addresses[1]);
+  _radio.begin();  // Start up the physical nRF24L01 Radio
+  _radio.setChannel(108);  // Above most Wifi Channels
+  _radio.setPALevel(RF24_PA_HIGH);
+  _radio.setPayloadSize(sizeof(_data));
+  _radio.openWritingPipe( _addresses[0]);
+  _radio.openReadingPipe(1, _addresses[1]);
 
   ADMUX = (1 << REFS0) | (1 << MUX3) | (1 << MUX2) | (1 << MUX1);
   //ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
@@ -66,17 +66,17 @@ void setup() {
   while (ADCSRA & (1 << ADSC));
 }
 
-byte interval = 3;
+byte _intervalSelector = 3;
 
 void loop() {
 
-  _display.begin();
-  _display.setContrast(50);
+  //_display.begin();
+  //_display.setContrast(50);
   
   auto state = digitalRead(BME_MOSI);
   digitalWrite(BME_MOSI, HIGH);
 
-  switch (interval)
+  switch (_intervalSelector)
   {
     case 1:
       LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
@@ -105,7 +105,7 @@ void loop() {
   printValues();
 }
 
-byte command[sizeof(data)];
+byte command[sizeof(_data)];
 
 void setInterval(byte cmd);
 
@@ -113,10 +113,10 @@ void printValues() {
 
   Serial.print(F("reading..."));
   auto ms1 = micros();
-  auto datata = bme.readAll();
-  data.temp = datata.temp;
-  data.humid = datata.humid;
-  data.pressure = datata.pressure;
+  auto datata = _bme.readAll();
+  _data.temp = datata.temp;
+  _data.humid = datata.humid;
+  _data.pressure = datata.pressure;
 
   auto ms2 = micros();
   auto dif = ms2 - ms1;
@@ -125,30 +125,30 @@ void printValues() {
   Serial.println(" us");
   
   Serial.print("t ");
-  Serial.print(data.temp);
+  Serial.print(_data.temp);
   Serial.print("; h ");
-  Serial.print(data.humid);
+  Serial.print(_data.humid);
   Serial.print("; p ");
-  Serial.println(data.pressure);
+  Serial.println(_data.pressure);
   
   Serial.flush();
 
   ADCSRA |= (1 << ADSC);
   while (ADCSRA & (1 << ADSC));
   uint16_t res = ADC;
-  data.voltage = 108000 / res;
-  data.counter = _packetCounter++;
+  _data.voltage = 108000 / res;
+  _data.counter = _packetCounter++;
 
-  myRadio.write( &data, sizeof(data) );
-  myRadio.startListening();
+  _radio.write( &_data, sizeof(_data) );
+  _radio.startListening();
   LowPower.powerDown(SLEEP_15MS, ADC_OFF, BOD_OFF);
-  if (myRadio.available())
+  if (_radio.available())
   {
-    myRadio.read(&command, sizeof(data));
+    _radio.read(&command, sizeof(_data));
     byte cmd = command[0];
     setInterval(cmd);
   }
-  myRadio.stopListening();
+  _radio.stopListening();
 
   Serial.print("voltage ");
   Serial.print(1080000 / res);
@@ -159,10 +159,10 @@ void printValues() {
 void setInterval(byte cmd)
 {
   if (cmd >= 1 && cmd <= 5) {
-    interval = cmd;
+    _intervalSelector = cmd;
   }
   else
   {
-    interval = 1;
+    _intervalSelector = 1;
   }
 }
