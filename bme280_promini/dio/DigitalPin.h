@@ -63,7 +63,7 @@ void badPinCheck(uint8_t pin) {
  */
 static inline __attribute__((always_inline))
 volatile uint8_t* ddrReg(uint8_t pin) {
-  badPinCheck(pin);
+  //badPinCheck(pin);
   return GpioPinMap[pin].ddr;
 }
 //------------------------------------------------------------------------------
@@ -73,7 +73,7 @@ volatile uint8_t* ddrReg(uint8_t pin) {
  */
 static inline __attribute__((always_inline))
 uint8_t pinMask(uint8_t pin) {
-  badPinCheck(pin);
+  //badPinCheck(pin);
   return GpioPinMap[pin].mask;
 }
 //------------------------------------------------------------------------------
@@ -83,7 +83,7 @@ uint8_t pinMask(uint8_t pin) {
  */
 static inline __attribute__((always_inline))
 volatile uint8_t* pinReg(uint8_t pin) {
-  badPinCheck(pin);
+  //badPinCheck(pin);
   return GpioPinMap[pin].pin;
 }
 //------------------------------------------------------------------------------
@@ -93,7 +93,7 @@ volatile uint8_t* pinReg(uint8_t pin) {
  */
 static inline __attribute__((always_inline))
 volatile uint8_t* portReg(uint8_t pin) {
-  badPinCheck(pin);
+  //badPinCheck(pin);
   return GpioPinMap[pin].port;
 }
 //------------------------------------------------------------------------------

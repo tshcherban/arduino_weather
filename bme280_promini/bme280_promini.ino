@@ -35,7 +35,7 @@ typedef struct
 } __attribute__((__packed__)) ClimatReading;
 
 
-const uint32_t _internalRef = 108000000;
+const uint32_t _internalRef = 1080000;
 
 Adafruit_BME280_T<BME_MISO, BME_MOSI, BME_SCK, BME_CS> _bme;
 RF24 _radio (RF_CE, RF_CS);
@@ -46,6 +46,7 @@ BME280_Data _readData;
 byte _command[sizeof(_dataToSend)];
 uint8_t _packetCounter;
 byte _intervalSelector = 3;
+float _adcVal;
 
 
 inline __attribute__((always_inline))
@@ -81,13 +82,12 @@ void setup() {
 
   //Serial.end();
 
-  // _radio.begin();  // Start up the physical nRF24L01 Radio
-  // _radio.setChannel(108);  // Above most Wifi Channels
-  // _radio.setPALevel(RF24_PA_HIGH);
-  // _radio.setPayloadSize(sizeof(_dataToSend));
-  // _radio.openWritingPipe( _addresses[0]);
-  // _radio.openReadingPipe(1, _addresses[1]);
-
+  _radio.begin();  // Start up the physical nRF24L01 Radio
+  _radio.setChannel(108);  // Above most Wifi Channels
+  _radio.setPALevel(RF24_PA_HIGH);
+  _radio.setPayloadSize(sizeof(_dataToSend));
+  _radio.openWritingPipe( _addresses[0]);
+  _radio.openReadingPipe(1, _addresses[1]);
   ADMUX = (1 << REFS0) | (1 << MUX3) | (1 << MUX2) | (1 << MUX1);
   //ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
   ADCSRA = (1 << ADEN) | (1 << ADPS1);
@@ -101,6 +101,14 @@ void setup() {
                   /*standby_duration*/ Adafruit_BME280::standby_duration::STANDBY_MS_250);
 
   waitAdc();
+  startAdc();
+  waitAdc();
+  startAdc();
+  waitAdc();
+
+  _adcVal = _internalRef / ADC;
+
+  PRR |= 0b11001100;
 }
 
 void loop() {
@@ -134,12 +142,17 @@ void loop() {
   digitalWrite(BME_MOSI, state);
 
   printValues();
+  Serial.print(PRR, BIN);
+  Serial.println();
+  Serial.flush();
 }
+
+
 
 void printValues() {
   startAdc();
 
-  auto ms1 = micros() * 32;
+  auto ms1 = trueMicros();
   _readData = _bme.readAll();
   _dataToSend.temp = _readData.temp;
   _dataToSend.humid = _readData.humid;
@@ -148,22 +161,18 @@ void printValues() {
   waitAdc();
   startAdc();
   waitAdc();
-  uint32_t res = ADC;
-  startAdc();
-  waitAdc();
-  res += ADC;
-  startAdc();
-  waitAdc();
-  res += ADC;
-  startAdc();
-  waitAdc();
-  res += ADC;
-  _dataToSend.voltage = _internalRef / (res / 4);
+  uint32_t val = _internalRef / ADC;
+
+  _adcVal += (val - _adcVal) * 0.1f;
+
+  _dataToSend.voltage = (uint16_t) _adcVal;
   _dataToSend.counter = _packetCounter++;
 
-  auto ms2 = micros() * 32;
+  _radio.write( &_dataToSend, sizeof(_dataToSend) );
+
+  auto ms2 = trueMicros();
   auto dif = ms2 - ms1;
-  Serial.print(" done in ");
+  Serial.print("done in ");
   Serial.print(dif);
   Serial.println(" us");
 
@@ -175,6 +184,8 @@ void printValues() {
   Serial.print(_dataToSend.pressure);
   Serial.print("; v ");
   Serial.println(_dataToSend.voltage);
+  Serial.println(val);
+  Serial.println(_adcVal);
   Serial.flush();
 
   // _radio.write( &_dataToSend, sizeof(_dataToSend) );

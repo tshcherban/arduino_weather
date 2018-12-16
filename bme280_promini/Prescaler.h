@@ -21,7 +21,11 @@ uint16_t getClockDivisionFactor();
 
 inline unsigned long trueMillis();
 
+inline unsigned long trueMicros();
+
 void trueDelay(unsigned long ms);
+
+void trueDelayMicros(unsigned long ms);
 
 unsigned long rescaleDuration(unsigned long d);
 

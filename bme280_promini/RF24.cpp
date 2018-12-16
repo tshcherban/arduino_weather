@@ -9,6 +9,10 @@ static void delayw(unsigned long ms)
   trueDelay(ms);
 }
 
+static void delayMicr(unsigned long ms)
+{
+  trueDelayMicros(ms);
+}
 
 /****************************************************************************/
 
@@ -22,11 +26,11 @@ void RF24::csn(bool mode)
 	else {
 		if (mode == HIGH) {
 			PORTB |= (1<<PINB2);  	// SCK->CSN HIGH
-			delayMicroseconds(100); // allow csn to settle.
+			delayMicr(100); // allow csn to settle.
 		} 
 		else {
 			PORTB &= ~(1<<PINB2);	// SCK->CSN LOW
-			delayMicroseconds(11);  // allow csn to settle
+			delayMicr(11);  // allow csn to settle
 		}
 	}
 	// Return, CSN toggle complete
@@ -49,8 +53,10 @@ void RF24::csn(bool mode)
 #endif
 
 #if !defined (RF24_LINUX)
-	digitalWrite(csn_pin,mode);
-	delayMicroseconds(csDelay);
+  fastDigitalWrite(csn_pin, mode);
+	//digitalWrite(csn_pin,mode);
+	//delayMicr(csDelay);
+  asm("nop;");
 #endif
 
 }
@@ -415,7 +421,7 @@ void RF24::print_address_register(const char* name, uint8_t reg, uint8_t qty)
 #endif
 /****************************************************************************/
 
-RF24::RF24(uint16_t _cepin, uint16_t _cspin):
+RF24::RF24(uint16_t _cepin, const uint8_t _cspin):
   ce_pin(_cepin), csn_pin(_cspin), p_variant(false),
   payload_size(32), dynamic_payloads_enabled(false), addr_width(5),csDelay(5)//,pipe0_reading_address(0)
 {
@@ -426,7 +432,7 @@ RF24::RF24(uint16_t _cepin, uint16_t _cspin):
 
 #if defined (RF24_LINUX) && !defined (MRAA)//RPi constructor
 
-RF24::RF24(uint16_t _cepin, uint16_t _cspin, uint32_t _spi_speed):
+RF24::RF24(uint16_t _cepin, const uint8_t _cspin, uint32_t _spi_speed):
   ce_pin(_cepin),csn_pin(_cspin),spi_speed(_spi_speed),p_variant(false), payload_size(32), dynamic_payloads_enabled(false),addr_width(5)//,pipe0_reading_address(0) 
 {
   pipe0_reading_address[0]=0;
@@ -730,7 +736,7 @@ void RF24::startListening(void)
   }
 
   // Go!
-  //delayMicroseconds(100);
+  //delayMicr(100);
 }
 
 /****************************************************************************/
@@ -743,10 +749,10 @@ void RF24::stopListening(void)
 {  
   ce(LOW);
 
-  delayMicroseconds(txDelay);
+  delayMicr(txDelay);
   
   if(read_register(FEATURE) & _BV(EN_ACK_PAY)){
-    delayMicroseconds(txDelay); //200
+    delayMicr(txDelay); //200
 	flush_tx();
   }
   //flush_rx();
@@ -761,7 +767,7 @@ void RF24::stopListening(void)
   #endif
   write_register(EN_RXADDR,read_register(EN_RXADDR) | _BV(pgm_read_byte(&child_pipe_enable[0]))); // Enable RX on pipe0
   
-  //delayMicroseconds(100);
+  //delayMicr(100);
 
 }
 
@@ -959,7 +965,7 @@ void RF24::startWrite( const void* buf, uint8_t len, const bool multicast ){
   write_payload( buf, len,multicast? W_TX_PAYLOAD_NO_ACK : W_TX_PAYLOAD ) ;
   ce(HIGH);
   #if defined(CORE_TEENSY) || !defined(ARDUINO) || defined (RF24_SPIDEV) || defined (RF24_DUE)
-	delayMicroseconds(10);
+	delayMicr(10);
   #endif
   ce(LOW);
 

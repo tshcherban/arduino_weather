@@ -20,7 +20,7 @@ void setClockPrescaler(uint8_t clockPrescaler) {
     __clock_prescaler = clockPrescaler;
 
     // Recopy interrupt register.
-    SREG = oldSREG;    
+    SREG = oldSREG;
   }
 }
 
@@ -37,10 +37,21 @@ unsigned long trueMillis()
   return millis() * getClockDivisionFactor();
 }
 
+unsigned long trueMicros()
+{
+  return micros() * getClockDivisionFactor();
+}
+
 void trueDelay(unsigned long ms)
 {
   unsigned long start = trueMillis();
   while (trueMillis() - start < ms);
+}
+
+void trueDelayMicros(unsigned long ms)
+{
+  unsigned long start = trueMicros();
+  while (trueMicros() - start < ms);
 }
 
 unsigned long rescaleDuration(unsigned long d) {
