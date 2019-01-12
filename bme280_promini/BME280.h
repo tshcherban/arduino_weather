@@ -297,6 +297,29 @@ class Adafruit_BME280_T : Adafruit_BME280{
       int32_t T = (t_fine * 5 + 128) >> 8;
       return (int16_t)(T / 10);
     }
+
+    int16_t convertTemperature(int32_t adc_T)
+    {
+      int32_t var1, var2;
+
+      if (adc_T == 0x800000) // value in case temp measurement was disabled
+        return -100;
+
+      adc_T >>= 4;
+
+      var1 = ((((adc_T >> 3) - ((int32_t)_bme280_calib.dig_T1 << 1))) *
+              ((int32_t)_bme280_calib.dig_T2)) >> 11;
+
+      var2 = (((((adc_T >> 4) - ((int32_t)_bme280_calib.dig_T1)) *
+                ((adc_T >> 4) - ((int32_t)_bme280_calib.dig_T1))) >> 12) *
+              ((int32_t)_bme280_calib.dig_T3)) >> 14;
+
+      t_fine = var1 + var2;
+
+      int32_t T = (t_fine * 5 + 128) >> 8;
+      return (int16_t)(T / 10);
+    }
+
     float readPressure(void)
     {
       int64_t var1, var2, p;
@@ -328,15 +351,12 @@ class Adafruit_BME280_T : Adafruit_BME280{
       p = ((p + var1 + var2) >> 8) + (((int64_t)_bme280_calib.dig_P7) << 4);
       return (float)p / 256;
     }
-    float readPressureUnsafe(void)
+    float convertPressure(int32_t adc_P)
     {
-      int64_t var1, var2, p;
-      //temperature was read (hopefully)
-      //readTemperatureInt16(); // must be done first to get t_fine
-
-      int32_t adc_P = read24(BME280_REGISTER_PRESSUREDATA);
       if (adc_P == 0x800000) // value in case pressure measurement was disabled
         return NAN;
+
+      int64_t var1, var2, p;
 
       adc_P >>= 4;
 
@@ -410,9 +430,8 @@ class Adafruit_BME280_T : Adafruit_BME280{
       v_x1_u32r = (v_x1_u32r > 419430400) ? 419430400 : v_x1_u32r;
       return (uint8_t)(v_x1_u32r >> 22);
     }
-    uint16_t readHumidityUint16Unsafe(void)
+    uint16_t convertHumidity(int32_t adc_H)
     {
-      int32_t adc_H = read16(BME280_REGISTER_HUMIDDATA);
       if (adc_H == 0x8000) // value in case humidity measurement was disabled
         return 0;
 
@@ -434,16 +453,24 @@ class Adafruit_BME280_T : Adafruit_BME280{
 
       return (uint16_t)(((v_x1_u32r >> 12) * 10) >> 10);
     }
+
     BME280_Data readAll(void)
     {
       BME280_Data data;
-      //digitalWriteW(_cs, LOW);
-      data.temp = readTemperatureInt16();
-      data.humid = readHumidityUint16Unsafe();
 
-      data.pressure = readPressureUnsafe();
-      //digitalWriteW(_cs, HIGH);
+      _pinCs.low();
+      // read command, bit 7 high (start burst read)
+      spixfer(BME280_REGISTER_PRESSUREDATA | 0x80);
 
+      int32_t adc_P = read24Burst(); // BME280_REGISTER_PRESSUREDATA  0xF7-0xF9
+      int32_t adc_T = read24Burst(); // BME280_REGISTER_TEMPDATA      0xFA-0xFC
+      int32_t adc_H = read16Burst(); // BME280_REGISTER_HUMIDDATA     0xFD-0xFE
+      _pinCs.high();
+      
+      data.temp = convertTemperature(adc_T);
+      data.humid = convertHumidity(adc_H);
+      data.pressure = convertPressure(adc_P);
+      
       return data;
     }
 
@@ -492,18 +519,65 @@ class Adafruit_BME280_T : Adafruit_BME280{
       return reply;
       }*/
 
+    //inline __attribute__((always_inline))
     uint8_t spixfer(uint8_t x) {
       uint8_t reply = 0;
-      for (int i = 7; i >= 0; i--) {
-        reply <<= 1;
+      reply <<= 1;
+      _pinSck.low();
+      _pinMosi.write((x & (1 << 7)));
+      _pinSck.high();
+      if (_pinMiso.read())
+        reply |= 1;
 
-        _pinSck.low();
-        _pinMosi.write((x & (1 << i)));
-        _pinSck.high();
+      reply <<= 1;
+      _pinSck.low();
+      _pinMosi.write((x & (1 << 6)));
+      _pinSck.high();
+      if (_pinMiso.read())
+        reply |= 1;
 
-        if (_pinMiso.read())
-          reply |= 1;
-      }
+      reply <<= 1;
+      _pinSck.low();
+      _pinMosi.write((x & (1 << 5)));
+      _pinSck.high();
+      if (_pinMiso.read())
+        reply |= 1;
+
+      reply <<= 1;
+      _pinSck.low();
+      _pinMosi.write((x & (1 << 4)));
+      _pinSck.high();
+      if (_pinMiso.read())
+        reply |= 1;
+
+      reply <<= 1;
+      _pinSck.low();
+      _pinMosi.write((x & (1 << 3)));
+      _pinSck.high();
+      if (_pinMiso.read())
+        reply |= 1;
+
+              reply <<= 1;
+      _pinSck.low();
+      _pinMosi.write((x & (1 << 2)));
+      _pinSck.high();
+      if (_pinMiso.read())
+        reply |= 1;
+
+              reply <<= 1;
+      _pinSck.low();
+      _pinMosi.write((x & (1 << 1)));
+      _pinSck.high();
+      if (_pinMiso.read())
+        reply |= 1;
+
+              reply <<= 1;
+      _pinSck.low();
+      _pinMosi.write((x & (1 << 0)));
+      _pinSck.high();
+      if (_pinMiso.read())
+        reply |= 1;
+      
       return reply;
     }
 
@@ -536,6 +610,14 @@ class Adafruit_BME280_T : Adafruit_BME280{
 
       return value;
     }
+    uint16_t  read16Burst()
+    {
+      uint16_t value;
+
+      value = (spixfer(0) << 8) | spixfer(0);
+
+      return value;
+    }
     uint16_t  read16t(byte reg)
     {
       uint16_t value;
@@ -561,6 +643,19 @@ class Adafruit_BME280_T : Adafruit_BME280{
 
       _pinCs.write(HIGH);
       //digitalWriteW(_cs, HIGH);
+
+      return value;
+    }
+
+    uint32_t  read24Burst()
+    {
+      uint32_t value;
+
+      value = spixfer(0);
+      value <<= 8;
+      value |= spixfer(0);
+      value <<= 8;
+      value |= spixfer(0);
 
       return value;
     }

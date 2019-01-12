@@ -66,8 +66,8 @@ void setup() {
   setClockPrescaler(CLOCK_PRESCALER_32);
   uint16_t divFactor = 32;
   Serial.begin(1200 * divFactor);
+  UBRR0 = 12; // baudrate 4800
   Serial.println(F("boot"));
-  Serial.flush();
   auto status = _bme.begin(0x76);
   if (!status) {
     trueDelay(10);
@@ -88,17 +88,19 @@ void setup() {
   _radio.setPayloadSize(sizeof(_dataToSend));
   _radio.openWritingPipe( _addresses[0]);
   _radio.openReadingPipe(1, _addresses[1]);
+  _radio.setRetries(0, 0);
+  
   ADMUX = (1 << REFS0) | (1 << MUX3) | (1 << MUX2) | (1 << MUX1);
   //ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
   ADCSRA = (1 << ADEN) | (1 << ADPS1);
   startAdc();
 
   _bme.setSampling(Adafruit_BME280::sensor_mode::MODE_NORMAL,
-                  /*tempSampling  */   Adafruit_BME280::sensor_sampling::SAMPLING_X16,
-                  /*pressSampling */   Adafruit_BME280::sensor_sampling::SAMPLING_X16,
-                  /*humSampling   */   Adafruit_BME280::sensor_sampling::SAMPLING_X16,
-                  /*filter        */   Adafruit_BME280::sensor_filter::FILTER_X4,
-                  /*standby_duration*/ Adafruit_BME280::standby_duration::STANDBY_MS_250);
+                   /*tempSampling  */   Adafruit_BME280::sensor_sampling::SAMPLING_X8,
+                   /*pressSampling */   Adafruit_BME280::sensor_sampling::SAMPLING_X4,
+                   /*humSampling   */   Adafruit_BME280::sensor_sampling::SAMPLING_X2,
+                   /*filter        */   Adafruit_BME280::sensor_filter::FILTER_X4,
+                   /*standby_duration*/ Adafruit_BME280::standby_duration::STANDBY_MS_250);
 
   waitAdc();
   startAdc();
@@ -142,15 +144,47 @@ void loop() {
   digitalWrite(BME_MOSI, state);
 
   printValues();
-  Serial.print(PRR, BIN);
   Serial.println();
   Serial.flush();
 }
 
-
-
 void printValues() {
-  startAdc();
+  auto ms11 = trueMicros();
+  _readData = _bme.readAll();
+  _dataToSend.temp = _readData.temp;
+  _dataToSend.humid = _readData.humid;
+  _dataToSend.pressure = _readData.pressure;
+
+  //startAdc();
+  //waitAdc();
+  //uint32_t val = _internalRef / ADC;
+uint32_t val = 0;
+  //_adcVal += (val - _adcVal) * 0.1f;
+
+  //_dataToSend.voltage = (uint16_t) _adcVal;
+  _dataToSend.counter = _packetCounter++;
+
+  _radio.write( &_dataToSend, sizeof(_dataToSend) );
+
+  auto ms22 = trueMicros();
+  auto dif = ms22 - ms11;
+  Serial.print(_dataToSend.voltage);
+  Serial.print('\t');
+  Serial.print(_adcVal);
+  Serial.print('\t');
+  Serial.print(val);
+  Serial.print('\t');
+  Serial.print(_dataToSend.temp);
+  Serial.print('\t');
+  Serial.print(_dataToSend.humid);
+  Serial.print('\t');
+  Serial.print(_dataToSend.pressure);
+  Serial.print('\t');
+  Serial.print(dif);
+  
+  Serial.flush();
+  return;
+/*  startAdc();
 
   auto ms1 = trueMicros();
   _readData = _bme.readAll();
@@ -183,11 +217,13 @@ void printValues() {
   Serial.print("; p ");
   Serial.print(_dataToSend.pressure);
   Serial.print("; v ");
-  Serial.println(_dataToSend.voltage);
+  Serial.print(_dataToSend.voltage);
+  Serial.print(" ");
+  Serial.print(_adcVal);
+  Serial.print(" ");
   Serial.println(val);
-  Serial.println(_adcVal);
   Serial.flush();
-
+*/
   // _radio.write( &_dataToSend, sizeof(_dataToSend) );
   // _radio.startListening();
   // LowPower.powerDown(SLEEP_15MS, ADC_OFF, BOD_OFF);
