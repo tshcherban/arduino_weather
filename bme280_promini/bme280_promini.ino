@@ -93,7 +93,6 @@ void setup() {
   ADMUX = (1 << REFS0) | (1 << MUX3) | (1 << MUX2) | (1 << MUX1);
   //ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
   ADCSRA = (1 << ADEN) | (1 << ADPS1);
-  startAdc();
 
   _bme.setSampling(Adafruit_BME280::sensor_mode::MODE_NORMAL,
                    /*tempSampling  */   Adafruit_BME280::sensor_sampling::SAMPLING_X8,
@@ -101,10 +100,11 @@ void setup() {
                    /*humSampling   */   Adafruit_BME280::sensor_sampling::SAMPLING_X2,
                    /*filter        */   Adafruit_BME280::sensor_filter::FILTER_X4,
                    /*standby_duration*/ Adafruit_BME280::standby_duration::STANDBY_MS_250);
-
-  waitAdc();
   startAdc();
   waitAdc();
+
+  LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);
+
   startAdc();
   waitAdc();
 
@@ -155,13 +155,12 @@ void printValues() {
   _dataToSend.humid = _readData.humid;
   _dataToSend.pressure = _readData.pressure;
 
-  //startAdc();
-  //waitAdc();
-  //uint32_t val = _internalRef / ADC;
-uint32_t val = 0;
-  //_adcVal += (val - _adcVal) * 0.1f;
+  startAdc();
+  waitAdc();
+  uint32_t val = _internalRef / ADC;
+  _adcVal += (val - _adcVal) * 0.1f;
 
-  //_dataToSend.voltage = (uint16_t) _adcVal;
+  _dataToSend.voltage = (uint16_t) _adcVal;
   _dataToSend.counter = _packetCounter++;
 
   _radio.write( &_dataToSend, sizeof(_dataToSend) );
