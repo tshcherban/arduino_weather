@@ -9,5 +9,4 @@ nRF24 packet format (in progress)
 17 bit -  pressure (300hPa-1100hPa, 80k of 131072 steps; resolution 1Pa; 30000_300hpa, 110000_1100hPa)
             possible to reduce by 1 bit reducing lower range, 300 hPa is too low for human either
 
-12 bit -  batt voltage (1000-5096mV, 4096 of 4096 steps; resolution - 1mV; 0_1000mV, 4096_5096mV; )
-            possible to reduce by 1 bit if rise lower limit to 1800 mV (most of sensors and arduino itself not running at this voltage either) and reducing upper range to 3848 mV, which is more than enough for two AA/AAA or coin cell
+12 bit -  batt voltage (1000-5095mV, 4096 of 4096 steps; resolution - 1mV; 0_1000mV, 4095_5095mV; ). Possible to reduce by 1 bit if rise lower limit to 1800 mV (most of sensors and arduino itself not running at this voltage either) and reducing upper range to 3848 mV, which is more than enough for two AA/AAA or coin cell
